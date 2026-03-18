@@ -1,0 +1,39 @@
+# Build folders
+Debug/
+Release/
+build/
+cmake-build-debug/
+
+# STM32CubeIDE metadata
+.settings/
+.metadata/
+
+# Toolchain files
+*.launch
+
+# Object files
+*.o
+*.d
+*.elf
+*.bin
+*.hex
+*.map
+*.lst
+
+# CMake
+CMakeFiles/
+CMakeCache.txt
+
+# IDE junk
+.vscode/
+.idea/
+
+# OS junk
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Backup files
+*~
