@@ -11,15 +11,6 @@ static char cli_buffer[CLI_BUFFER_SIZE];
 
 static void cli_execute(char *cmd);
 
-
-typedef void (*cli_cmd_fn_t)(int argc, char **argv);
-
-typedef struct {
-    const char *name;
-    cli_cmd_fn_t fn;
-    const char *help;
-} cli_cmd_t;
-
 static void CMD_Ping(int argc, char **argv);
 static void CMD_Help(int argc, char **argv);
 static void CMD_PwrIn(int argc, char **argv);
@@ -83,9 +74,7 @@ static void CMD_PwrOut(int argc, char **argv){
 }
 
 
-// Command List and Command Execution
-
-
+// Command Execution
 
 static int cli_tokenize(char *line, char **argv)
 {

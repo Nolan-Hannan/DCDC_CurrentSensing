@@ -1,0 +1,89 @@
+#include "i2c.h"
+
+Sensor_t sensors[4] =
+{
+    { .addr = SHUNT1_ADDR, .alert_pin = ALERT1_Pin, .alert_flag = 0 },
+    { .addr = SHUNT2_ADDR, .alert_pin = ALERT2_Pin, .alert_flag = 0 },
+    { .addr = SHUNT3_ADDR, .alert_pin = ALERT3_Pin, .alert_flag = 0 },
+    { .addr = SHUNT4_ADDR, .alert_pin = ALERT4_Pin, .alert_flag = 0 }
+};
+
+HAL_StatusTypeDef I2C_Init(I2C_HandleTypeDef *hi2c)
+{
+    HAL_StatusTypeDef status;
+
+    for (uint8_t i = 0; i < NUM_SENSORS; i++)
+    {
+        uint8_t config_data[2] = { 0x44, 0xDF };   // Choosing 16 averages, 588 us conversion times, continuous shunt and bus readings
+        uint8_t cal_data_10mO[2]    = { 0x10, 0x62 };
+        uint8_t cal_data_5mO[2]    = { 0x0D, 0x1B };
+        uint8_t aul_data_10mO[2] = {0x32, 0x00}; // Overcurrent alert at 3.2 A
+        uint8_t aul_data_5mO[2] = {0x3E, 0x80}; // Overcurrent alert at 8 A
+        uint8_t alert_setting[2] = {0x80, 0x00};
+
+        sensors[i].alert_flag = 0;
+
+        status = I2C_CheckReady(hi2c, i);
+        if (status != HAL_OK)
+            return status;
+
+        status = I2C_WriteReg(hi2c, i, SHUNT_CONFIG_ADDR, config_data, 2);
+        if (status != HAL_OK)
+            return status;
+
+        status = I2C_WriteReg(hi2c, i, SHUNT_MASK_ADDR, alert_setting, 2);
+        if (status != HAL_OK)
+                   return status;
+
+        if(i >= 2){
+			status = I2C_WriteReg(hi2c, i, SHUNT_CAL_ADDR, cal_data_10mO, 2);
+        }
+        else{
+        	status = I2C_WriteReg(hi2c, i, SHUNT_CAL_ADDR, cal_data_5mO, 2);
+        }
+        if (status != HAL_OK)
+            return status;
+
+        if(i >= 2){
+			status = I2C_WriteReg(hi2c, i, SHUNT_AUL_ADDR, aul_data_10mO, 2);
+		}
+		else{
+			status = I2C_WriteReg(hi2c, i, SHUNT_AUL_ADDR, aul_data_5mO, 2);
+		}
+		if (status != HAL_OK)
+			return status;
+    }
+
+    return HAL_OK;
+}
+
+HAL_StatusTypeDef I2C_CheckReady(I2C_HandleTypeDef *hi2c, uint8_t sensor_index)
+{
+    if (sensor_index >= NUM_SENSORS)
+    {
+        return HAL_ERROR;
+    }
+
+    return HAL_I2C_IsDeviceReady(hi2c, sensors[sensor_index].addr, 3, I2C_TIMEOUT);
+}
+
+HAL_StatusTypeDef I2C_ReadReg(I2C_HandleTypeDef *hi2c, uint8_t sensor_index, uint8_t reg, uint8_t *data, uint16_t len)
+{
+    if (sensor_index >= NUM_SENSORS || data == NULL)
+    {
+        return HAL_ERROR;
+    }
+
+    return HAL_I2C_Mem_Read(hi2c, sensors[sensor_index].addr, reg, I2C_MEMADD_SIZE_8BIT, data, len, I2C_TIMEOUT);
+}
+
+HAL_StatusTypeDef I2C_WriteReg(I2C_HandleTypeDef *hi2c, uint8_t sensor_index, uint8_t reg, const uint8_t *data, uint16_t len)
+{
+    if (sensor_index >= NUM_SENSORS || data == NULL)
+    {
+        return HAL_ERROR;
+    }
+
+    return HAL_I2C_Mem_Write(hi2c, sensors[sensor_index].addr, reg, I2C_MEMADD_SIZE_8BIT, (uint8_t *)data, len, I2C_TIMEOUT);
+}
+
