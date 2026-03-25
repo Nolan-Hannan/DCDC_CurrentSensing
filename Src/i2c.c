@@ -19,7 +19,7 @@ HAL_StatusTypeDef I2C_Init(I2C_HandleTypeDef *hi2c)
         uint8_t cal_data_5mO[2]    = { 0x0D, 0x1B };
         uint8_t aul_data_10mO[2] = {0x32, 0x00}; // Overcurrent alert at 3.2 A
         uint8_t aul_data_5mO[2] = {0x3E, 0x80}; // Overcurrent alert at 8 A
-        uint8_t alert_setting[2] = {0x80, 0x00};
+        uint8_t alert_setting[2] = {0x80, 0x01};
 
         sensors[i].alert_flag = 0;
 
@@ -125,3 +125,43 @@ HAL_StatusTypeDef I2C_ReadCurrents(I2C_HandleTypeDef *hi2c, char *retmsg, uint16
 	return HAL_OK;
 }
 
+HAL_StatusTypeDef I2C_HandleAlert(I2C_HandleTypeDef *hi2c, uint8_t sensor_idx) {
+	int16_t cur_raw = 0;
+	if (I2C_ReadReg(hi2c, sensor_idx, SHUNT_CUR_ADDR, &cur_raw) != HAL_OK)
+	{
+		Error_Handler();
+	}
+
+	int32_t current_mA;
+
+	if (sensor_idx >= 2)
+		current_mA = (int32_t)(cur_raw * 0.00012208f * 1000.0f);
+	else
+		current_mA = (int32_t)(cur_raw * 0.0003052f * 1000.0f);
+
+	int16_t mask_raw;
+	if (I2C_ReadReg(hi2c, sensor_idx, SHUNT_MASK_ADDR, &mask_raw) != HAL_OK) {
+		Error_Handler();
+	}
+
+	char msg[64];
+
+	snprintf(msg, sizeof(msg),
+			 "Load[%d] current: %d mA\r\n",
+			 sensor_idx,
+			 (int)current_mA);
+
+	UART_SendLine(msg);
+
+	return HAL_OK;
+}
+
+
+void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
+{
+	for(uint8_t i = 0; i < NUM_SENSORS; ++i) {
+		if(sensors[i].alert_pin == GPIO_Pin) {
+			sensors[i].alert_flag = 1;
+		}
+	}
+}

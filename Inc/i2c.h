@@ -2,6 +2,7 @@
 #define I2C_H
 
 #include "main.h"
+#include "uart.h"
 #include <stdint.h>
 #include <stdio.h>
 
@@ -48,7 +49,7 @@ HAL_StatusTypeDef I2C_WriteReg(I2C_HandleTypeDef *hi2c,
 
 HAL_StatusTypeDef I2C_ReadCurrents(I2C_HandleTypeDef *hi2c, char *retmsg, uint16_t len);
 /* Alert handling */
-void I2C_HandleAlert(uint16_t GPIO_Pin);
+HAL_StatusTypeDef I2C_HandleAlert(I2C_HandleTypeDef *hi2c, uint8_t sensor_idx);
 
 
 #endif

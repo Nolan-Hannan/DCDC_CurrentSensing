@@ -124,18 +124,31 @@ int main(void)
   {
 	CLI_Process();
 
+	for (uint8_t i = 0; i < NUM_SENSORS; i++)
+	{
+		if (sensors[i].alert_flag)
+		{
+			sensors[i].alert_flag = 0;
+			if(I2C_HandleAlert(&hi2c1, i) != HAL_OK) {
+				Error_Handler();
+			}
+		}
+	}
+
 	if(g_inPwr_readFlag == 1) {
 		char msg[MAX_SEND_LENGTH];
 		snprintf(msg, sizeof(msg), "inADC: %d inCur: %d mA", ADC_GetRawIn(), (int)(((ADC_GetVoltageIn() - 1.65f)/0.044f) * 1000));
 		UART_SendLine(msg);
 		g_inPwr_readFlag = 0;
 	}
+
 	if(g_canPwr_readFlag == 1) {
 		char msg[MAX_SEND_LENGTH];
 		snprintf(msg, sizeof(msg), "canADC: %d canCur: %d mA", ADC_GetRawCan(), (int)(((ADC_GetVoltageCan() - 1.65f)/0.044f) * 1000));
 		UART_SendLine(msg);
 		g_canPwr_readFlag = 0;
 	}
+
 	if(g_shunt_readFlag == 1) {
 		char msg[MAX_SEND_LENGTH];
 		if(I2C_ReadCurrents(&hi2c1, msg, MAX_SEND_LENGTH) != HAL_OK) {
