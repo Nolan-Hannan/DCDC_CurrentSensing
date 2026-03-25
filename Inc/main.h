@@ -71,7 +71,7 @@ void Error_Handler(void);
 #define ALERT4_EXTI_IRQn EXTI9_5_IRQn
 
 /* USER CODE BEGIN Private defines */
-
+#define MAX_SEND_LENGTH 128
 /* USER CODE END Private defines */
 
 #ifdef __cplusplus

@@ -3,6 +3,8 @@
 
 #include "main.h"
 #include <stdint.h>
+#include <stdio.h>
+
 
 // Numberings correspond to voltage labelings in Altium -- i.e. SHUNT1 uses IN1_POS_12V
 #define SHUNT1_ADDR   (0x45 << 1)
@@ -12,6 +14,7 @@
 #define NUM_SENSORS 4
 
 #define SHUNT_CONFIG_ADDR 0x00
+#define SHUNT_CUR_ADDR 0x04
 #define SHUNT_CAL_ADDR 0x05
 #define SHUNT_MASK_ADDR 0x06
 #define SHUNT_AUL_ADDR 0x07
@@ -35,8 +38,7 @@ HAL_StatusTypeDef I2C_CheckReady(I2C_HandleTypeDef *hi2c, uint8_t sensor_index);
 HAL_StatusTypeDef I2C_ReadReg(I2C_HandleTypeDef *hi2c,
                                  uint8_t sensor_index,
                                  uint8_t reg,
-                                 uint8_t *data,
-                                 uint16_t len);
+                                 int16_t *data);
 
 HAL_StatusTypeDef I2C_WriteReg(I2C_HandleTypeDef *hi2c,
                                   uint8_t sensor_index,
@@ -44,6 +46,7 @@ HAL_StatusTypeDef I2C_WriteReg(I2C_HandleTypeDef *hi2c,
                                   const uint8_t *data,
                                   uint16_t len);
 
+HAL_StatusTypeDef I2C_ReadCurrents(I2C_HandleTypeDef *hi2c, char *retmsg, uint16_t len);
 /* Alert handling */
 void I2C_HandleAlert(uint16_t GPIO_Pin);
 

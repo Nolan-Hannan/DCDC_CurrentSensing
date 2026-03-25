@@ -67,15 +67,29 @@ HAL_StatusTypeDef I2C_CheckReady(I2C_HandleTypeDef *hi2c, uint8_t sensor_index)
     return HAL_I2C_IsDeviceReady(hi2c, sensors[sensor_index].addr, 3, I2C_TIMEOUT);
 }
 
-HAL_StatusTypeDef I2C_ReadReg(I2C_HandleTypeDef *hi2c, uint8_t sensor_index, uint8_t reg, uint8_t *data, uint16_t len)
-{
-    if (sensor_index >= NUM_SENSORS || data == NULL)
-    {
-        return HAL_ERROR;
-    }
+HAL_StatusTypeDef I2C_ReadReg(I2C_HandleTypeDef *hi2c, uint8_t sensor_index, uint8_t reg, int16_t *value)
+	{
+	    uint8_t data[2];
 
-    return HAL_I2C_Mem_Read(hi2c, sensors[sensor_index].addr, reg, I2C_MEMADD_SIZE_8BIT, data, len, I2C_TIMEOUT);
-}
+	    if (sensor_index >= NUM_SENSORS || value == NULL)
+	        return HAL_ERROR;
+
+	    HAL_StatusTypeDef status =
+	        HAL_I2C_Mem_Read(hi2c,
+	                         sensors[sensor_index].addr,
+	                         reg,
+	                         I2C_MEMADD_SIZE_8BIT,
+	                         data,
+	                         2,
+	                         I2C_TIMEOUT);
+
+	    if (status != HAL_OK)
+	        return status;
+
+	    *value = (data[0] << 8) | data[1];   // INA230 is big-endian
+
+	    return HAL_OK;
+	}
 
 HAL_StatusTypeDef I2C_WriteReg(I2C_HandleTypeDef *hi2c, uint8_t sensor_index, uint8_t reg, const uint8_t *data, uint16_t len)
 {
@@ -85,5 +99,29 @@ HAL_StatusTypeDef I2C_WriteReg(I2C_HandleTypeDef *hi2c, uint8_t sensor_index, ui
     }
 
     return HAL_I2C_Mem_Write(hi2c, sensors[sensor_index].addr, reg, I2C_MEMADD_SIZE_8BIT, (uint8_t *)data, len, I2C_TIMEOUT);
+}
+
+HAL_StatusTypeDef I2C_ReadCurrents(I2C_HandleTypeDef *hi2c, char *retmsg, uint16_t len) {
+	int32_t shuntCurVals[NUM_SENSORS];
+	int16_t cur = 0;
+	HAL_StatusTypeDef status;
+	for(uint8_t i = 0; i < NUM_SENSORS; ++i){
+		status = I2C_ReadReg(hi2c, i, SHUNT_CUR_ADDR, &cur);
+		if(status != HAL_OK) {
+			return status;
+		}
+		if(i >= 2) {
+			shuntCurVals[i] = (int32_t)(cur * 0.00012208 * 1000);
+		} else {
+			shuntCurVals[i] = (int32_t)(cur * 0.0003052 * 1000);
+		}
+	}
+	snprintf(retmsg, len, "load1Cur: %d mA\r\nload2Cur: %d mA\r\nload3Cur: %d mA\r\nload4Cur: %d mA\r\n",
+			(int)shuntCurVals[0],
+			(int)shuntCurVals[1],
+			(int)shuntCurVals[2],
+			(int)shuntCurVals[3]);
+
+	return HAL_OK;
 }
 

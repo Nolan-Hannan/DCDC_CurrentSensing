@@ -22,10 +22,15 @@ static const cli_cmd_t commands[] = {
 		{"help", CMD_Help, "Gives list of all functions"},
 		{"pwrin", CMD_PwrIn, "Returns Current in and Estimated Power for 120V"},
 		{"canpwr", CMD_CANPwr, "Returns Current along CAN line and est power for 12V"},
-		{"pwrout", CMD_PwrOut, "Returns Current and Est. Power for each of 4 12V loads. Pass arg 1, 2, 3, or 4 to see specific load."}
+		{"pwrout", CMD_PwrOut, "Returns Current and Est. Power for each of 4 12V loads."}
 };
 
 #define NUM_COMMANDS ((sizeof(commands)) / (sizeof(commands[0])))
+
+volatile uint8_t g_inPwr_readFlag = 0;
+volatile uint8_t g_canPwr_readFlag = 0;
+volatile uint8_t g_shunt_readFlag = 0;
+
 
 // Public CLI Functions
 
@@ -62,15 +67,15 @@ static void CMD_Help(int argc, char **argv)
 }
 
 static void CMD_PwrIn(int argc, char **argv){
-	UART_SendLine("Currently unimplemented. Needs ADC Bringup");
+	g_inPwr_readFlag = 1;
 }
 
 static void CMD_CANPwr(int argc, char **argv){
-	UART_SendLine("Currently unimplemented. Needs ADC Bringup");
+	g_canPwr_readFlag = 1;
 }
 
 static void CMD_PwrOut(int argc, char **argv){
-	UART_SendLine("Currently unimplemented. Needs I2C Bringup");
+	g_shunt_readFlag = 1;
 }
 
 

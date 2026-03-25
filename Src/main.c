@@ -23,6 +23,8 @@
 /* USER CODE BEGIN Includes */
 #include "uart.h"
 #include "cli.h"
+#include "i2c.h"
+#include "adc.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -109,6 +111,10 @@ int main(void)
   /* USER CODE BEGIN 2 */
   UART_Init(&huart1);
   CLI_Init();
+  I2C_Init(&hi2c1);
+  ADC_App_Init();
+
+  UART_StartReceiveIT();   // start UART interrupt reception
 
   /* USER CODE END 2 */
 
@@ -116,6 +122,29 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
+	CLI_Process();
+
+	if(g_inPwr_readFlag == 1) {
+		char msg[MAX_SEND_LENGTH];
+		snprintf(msg, sizeof(msg), "inADC: %d inCur: %d mA", ADC_GetRawIn(), (int)(((ADC_GetVoltageIn() - 1.65f)/0.044f) * 1000));
+		UART_SendLine(msg);
+		g_inPwr_readFlag = 0;
+	}
+	if(g_canPwr_readFlag == 1) {
+		char msg[MAX_SEND_LENGTH];
+		snprintf(msg, sizeof(msg), "canADC: %d canCur: %d mA", ADC_GetRawCan(), (int)(((ADC_GetVoltageCan() - 1.65f)/0.044f) * 1000));
+		UART_SendLine(msg);
+		g_canPwr_readFlag = 0;
+	}
+	if(g_shunt_readFlag == 1) {
+		char msg[MAX_SEND_LENGTH];
+		if(I2C_ReadCurrents(&hi2c1, msg, MAX_SEND_LENGTH) != HAL_OK) {
+			Error_Handler();
+		}
+		UART_SendLine(msg);
+		g_shunt_readFlag = 0;
+	}
+
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */

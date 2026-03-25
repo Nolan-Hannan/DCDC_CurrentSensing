@@ -6,6 +6,10 @@
 void CLI_Init(void);
 void CLI_Process(void);
 
+extern volatile uint8_t g_inPwr_readFlag;
+extern volatile uint8_t g_canPwr_readFlag;
+extern volatile uint8_t g_shunt_readFlag;
+
 typedef void (*cli_cmd_fn_t)(int argc, char **argv);
 
 typedef struct {
