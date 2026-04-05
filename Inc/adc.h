@@ -6,6 +6,8 @@
 
 #define ADC_MAX_COUNT   4095.0f
 #define ADC_VREF        3.3f
+#define ADC_VQUIESCENT 1.65f
+#define ADC_SENS 0.044f
 
 // For this naming convention, PA0 must attach to the IN_PWR voltage, PA2 must attach to the CAN voltage
 typedef struct

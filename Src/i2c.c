@@ -135,9 +135,9 @@ HAL_StatusTypeDef I2C_HandleAlert(I2C_HandleTypeDef *hi2c, uint8_t sensor_idx) {
 	int32_t current_mA;
 
 	if (sensor_idx >= 2)
-		current_mA = (int32_t)(cur_raw * 0.00012208f * 1000.0f);
+		current_mA = (int32_t)(cur_raw * SHUNT_SENS_10MO * 1000.0f);
 	else
-		current_mA = (int32_t)(cur_raw * 0.0003052f * 1000.0f);
+		current_mA = (int32_t)(cur_raw * SHUNT_SENS_5MO * 1000.0f);
 
 	int16_t mask_raw;
 	if (I2C_ReadReg(hi2c, sensor_idx, SHUNT_MASK_ADDR, &mask_raw) != HAL_OK) {
@@ -147,8 +147,8 @@ HAL_StatusTypeDef I2C_HandleAlert(I2C_HandleTypeDef *hi2c, uint8_t sensor_idx) {
 	char msg[64];
 
 	snprintf(msg, sizeof(msg),
-			 "Load[%d] current: %d mA\r\n",
-			 sensor_idx,
+			 "HIGH CURRENT: Load[%d] %d mA\r\n",
+			 sensor_idx + 1,
 			 (int)current_mA);
 
 	UART_SendLine(msg);

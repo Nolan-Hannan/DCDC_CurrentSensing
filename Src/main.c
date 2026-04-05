@@ -137,14 +137,14 @@ int main(void)
 
 	if(g_inPwr_readFlag == 1) {
 		char msg[MAX_SEND_LENGTH];
-		snprintf(msg, sizeof(msg), "inADC: %d inCur: %d mA", ADC_GetRawIn(), (int)(((ADC_GetVoltageIn() - 1.65f)/0.044f) * 1000));
+		snprintf(msg, sizeof(msg), "inADC: %d inCur: %d mA", ADC_GetRawIn(), (int)(((ADC_GetVoltageIn() - ADC_VQUIESCENT)/ADC_SENS) * 1000));
 		UART_SendLine(msg);
 		g_inPwr_readFlag = 0;
 	}
 
 	if(g_canPwr_readFlag == 1) {
 		char msg[MAX_SEND_LENGTH];
-		snprintf(msg, sizeof(msg), "canADC: %d canCur: %d mA", ADC_GetRawCan(), (int)(((ADC_GetVoltageCan() - 1.65f)/0.044f) * 1000));
+		snprintf(msg, sizeof(msg), "canADC: %d canCur: %d mA", ADC_GetRawCan(), (int)(((ADC_GetVoltageCan() - ADC_VQUIESCENT)/ADC_SENS) * 1000));
 		UART_SendLine(msg);
 		g_canPwr_readFlag = 0;
 	}
