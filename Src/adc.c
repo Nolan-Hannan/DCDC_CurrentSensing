@@ -42,7 +42,7 @@ HAL_StatusTypeDef ADC_ReadBoth(uint16_t *adc1_value, uint16_t *adc2_value)
     }
 
     /* Wait for ADC1 conversion */
-    status = HAL_ADC_PollForConversion(&hadc1, HAL_MAX_DELAY);
+    status = HAL_ADC_PollForConversion(&hadc1, 50);
     if (status != HAL_OK)
     {
         HAL_ADC_Stop(&hadc1);
@@ -51,7 +51,7 @@ HAL_StatusTypeDef ADC_ReadBoth(uint16_t *adc1_value, uint16_t *adc2_value)
     }
 
     /* Wait for ADC2 conversion */
-    status = HAL_ADC_PollForConversion(&hadc2, HAL_MAX_DELAY);
+    status = HAL_ADC_PollForConversion(&hadc2, 50);
     if (status != HAL_OK)
     {
         HAL_ADC_Stop(&hadc1);
