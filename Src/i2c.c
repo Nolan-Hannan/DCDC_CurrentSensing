@@ -19,7 +19,7 @@ HAL_StatusTypeDef I2C_Init(I2C_HandleTypeDef *hi2c)
         uint8_t cal_data_5mO[2]    = { 0x0D, 0x1B };
         uint8_t aul_data_10mO[2] = {0x32, 0x00}; // Overcurrent alert at 3.2 A
         uint8_t aul_data_5mO[2] = {0x3E, 0x80}; // Overcurrent alert at 8 A
-        uint8_t alert_setting[2] = {0x80, 0x01};
+        uint8_t alert_setting[2] = {0x80, 0x01}; // Monitor overcurrent (shunt overvoltage), latched alert register
 
         sensors[i].alert_flag = 0;
 
@@ -33,7 +33,7 @@ HAL_StatusTypeDef I2C_Init(I2C_HandleTypeDef *hi2c)
 
         status = I2C_WriteReg(hi2c, i, SHUNT_MASK_ADDR, alert_setting, 2);
         if (status != HAL_OK)
-                   return status;
+        	return status;
 
         if(i >= 2){
 			status = I2C_WriteReg(hi2c, i, SHUNT_CAL_ADDR, cal_data_10mO, 2);
@@ -127,10 +127,9 @@ HAL_StatusTypeDef I2C_ReadCurrents(I2C_HandleTypeDef *hi2c, char *retmsg, uint16
 
 HAL_StatusTypeDef I2C_HandleAlert(I2C_HandleTypeDef *hi2c, uint8_t sensor_idx) {
 	int16_t cur_raw = 0;
-	if (I2C_ReadReg(hi2c, sensor_idx, SHUNT_CUR_ADDR, &cur_raw) != HAL_OK)
-	{
-		Error_Handler();
-	}
+	HAL_StatusTypeDef status;
+	status = I2C_ReadReg(hi2c, sensor_idx, SHUNT_CUR_ADDR, &cur_raw);
+	if(status != HAL_OK) return status;
 
 	int32_t current_mA;
 
@@ -140,20 +139,27 @@ HAL_StatusTypeDef I2C_HandleAlert(I2C_HandleTypeDef *hi2c, uint8_t sensor_idx) {
 		current_mA = (int32_t)(cur_raw * SHUNT_SENS_5MO * 1000.0f);
 
 	int16_t mask_raw;
-	if (I2C_ReadReg(hi2c, sensor_idx, SHUNT_MASK_ADDR, &mask_raw) != HAL_OK) {
-		Error_Handler();
-	}
+	status = I2C_ReadReg(hi2c, sensor_idx, SHUNT_MASK_ADDR, &mask_raw);
+	if(status != HAL_OK) return status;
 
 	char msg[64];
 
-	snprintf(msg, sizeof(msg),
-			 "HIGH CURRENT: Load[%d] %d mA\r\n",
-			 sensor_idx + 1,
-			 (int)current_mA);
+	if (mask_raw & 0x0010) // AFF bit - Alert Function Flag
+	{
+		snprintf(msg, sizeof(msg),
+				 "HIGH CURRENT: Load[%d] %d mA",
+				 sensor_idx + 1,
+				 (int)current_mA);
 
-	UART_SendLine(msg);
+		status = UART_SendLine(msg);
+	} else {
+		snprintf(msg, sizeof(msg),
+						 "MISC Shunt Error: Load[%d]",
+						 sensor_idx + 1);
+		status = UART_SendLine(msg);
+	}
 
-	return HAL_OK;
+	return status;
 }
 
 
@@ -165,3 +171,11 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 		}
 	}
 }
+
+//void HAL_I2C_ErrorCallback(I2C_HandleTypeDef *hi2c)
+//{
+//    uint32_t error = HAL_I2C_GetError(hi2c);
+//    char msg[48];
+//    snprintf(msg, sizeof(msg), "I2C ERR: 0x%02lX", error);
+//    UART_SendLine(msg);
+//}

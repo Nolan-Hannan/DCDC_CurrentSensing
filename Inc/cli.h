@@ -7,9 +7,9 @@
 HAL_StatusTypeDef CLI_Init(void);
 HAL_StatusTypeDef CLI_Process(void);
 
-extern volatile uint8_t g_inPwr_readFlag;
-extern volatile uint8_t g_canPwr_readFlag;
-extern volatile uint8_t g_shunt_readFlag;
+extern uint8_t g_inPwr_readFlag;
+extern uint8_t g_canPwr_readFlag;
+extern uint8_t g_shunt_readFlag;
 
 typedef void (*cli_cmd_fn_t)(int argc, char **argv);
 
