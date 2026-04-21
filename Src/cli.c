@@ -27,25 +27,25 @@ static const cli_cmd_t commands[] = {
 
 #define NUM_COMMANDS ((sizeof(commands)) / (sizeof(commands[0])))
 
-volatile uint8_t g_inPwr_readFlag = 0;
-volatile uint8_t g_canPwr_readFlag = 0;
-volatile uint8_t g_shunt_readFlag = 0;
+uint8_t g_inPwr_readFlag = 0;
+uint8_t g_canPwr_readFlag = 0;
+uint8_t g_shunt_readFlag = 0;
 
 
 // Public CLI Functions
 
-void CLI_Init(void)
+HAL_StatusTypeDef CLI_Init(void)
 {
-    UART_SendString("> ");
+    return UART_SendString("> ");
 }
 
-void CLI_Process(void) {
-	if (UART_LineReady())
-	{
-		UART_GetLine(cli_buffer, CLI_BUFFER_SIZE);
-		cli_execute(cli_buffer);
-		UART_SendString("> ");
-	}
+HAL_StatusTypeDef CLI_Process(void) {
+    if (UART_LineReady()) {
+        UART_GetLine(cli_buffer, CLI_BUFFER_SIZE);
+        cli_execute(cli_buffer);
+        return UART_SendString("> ");  // only the prompt matters
+    }
+    return HAL_OK;
 }
 
 // Command Implementations

@@ -5,11 +5,10 @@
 #include <stdint.h>
 
 
-void UART_Init(UART_HandleTypeDef *huart);
-void UART_StartReceiveIT(void);
-void UART_SendString(const char *str);
-void UART_SendData(uint8_t *data, uint16_t len);
-void UART_SendLine(const char *str);
+HAL_StatusTypeDef UART_Init(UART_HandleTypeDef *huart);
+HAL_StatusTypeDef UART_StartReceiveIT(void);
+HAL_StatusTypeDef UART_SendString(const char *str);
+HAL_StatusTypeDef UART_SendLine(const char *str);
 
 uint8_t UART_LineReady(void);
 void UART_GetLine(char *dest, uint16_t max_len);

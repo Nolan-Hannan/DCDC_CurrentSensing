@@ -2,9 +2,10 @@
 #define CLI_H
 
 #include <stdint.h>
+#include "stm32f4xx_hal.h"
 
-void CLI_Init(void);
-void CLI_Process(void);
+HAL_StatusTypeDef CLI_Init(void);
+HAL_StatusTypeDef CLI_Process(void);
 
 extern volatile uint8_t g_inPwr_readFlag;
 extern volatile uint8_t g_canPwr_readFlag;

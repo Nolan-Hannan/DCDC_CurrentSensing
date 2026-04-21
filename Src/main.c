@@ -109,12 +109,13 @@ int main(void)
   MX_I2C1_Init();
   MX_USART1_UART_Init();
   /* USER CODE BEGIN 2 */
-  UART_Init(&huart1);
-  CLI_Init();
-  I2C_Init(&hi2c1);
+  if(UART_Init(&huart1) != HAL_OK) Error_Handler();
+  if(UART_StartReceiveIT() != HAL_OK) Error_Handler();
+  if(I2C_Init(&hi2c1) != HAL_OK) Error_Handler();
   ADC_App_Init();
 
-  UART_StartReceiveIT();   // start UART interrupt reception
+  if(CLI_Init() != HAL_OK) Error_Handler();
+
 
   /* USER CODE END 2 */
 
@@ -122,11 +123,11 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-	CLI_Process();
+	if(CLI_Process() != HAL_OK) Error_Handler();
 
 	// LED Blink
-	HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_12);
-	HAL_Delay(500);
+//	HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_12);
+//	HAL_Delay(500);
 	// END LED Blink
 
 	for (uint8_t i = 0; i < NUM_SENSORS; i++)
@@ -134,32 +135,28 @@ int main(void)
 		if (sensors[i].alert_flag)
 		{
 			sensors[i].alert_flag = 0;
-			if(I2C_HandleAlert(&hi2c1, i) != HAL_OK) {
-				Error_Handler();
-			}
+			if(I2C_HandleAlert(&hi2c1, i) != HAL_OK) Error_Handler();
 		}
 	}
 
 	if(g_inPwr_readFlag == 1) {
 		char msg[MAX_SEND_LENGTH];
 		snprintf(msg, sizeof(msg), "inADC: %d inCur: %d mA", ADC_GetRawIn(), (int)(((ADC_GetVoltageIn() - ADC_VQUIESCENT)/ADC_SENS) * 1000));
-		UART_SendLine(msg);
+		if(UART_SendLine(msg) != HAL_OK) Error_Handler();
 		g_inPwr_readFlag = 0;
 	}
 
 	if(g_canPwr_readFlag == 1) {
 		char msg[MAX_SEND_LENGTH];
 		snprintf(msg, sizeof(msg), "canADC: %d canCur: %d mA", ADC_GetRawCan(), (int)(((ADC_GetVoltageCan() - ADC_VQUIESCENT)/ADC_SENS) * 1000));
-		UART_SendLine(msg);
+		if(UART_SendLine(msg) != HAL_OK) Error_Handler();
 		g_canPwr_readFlag = 0;
 	}
 
 	if(g_shunt_readFlag == 1) {
 		char msg[MAX_SEND_LENGTH];
-		if(I2C_ReadCurrents(&hi2c1, msg, MAX_SEND_LENGTH) != HAL_OK) {
-			Error_Handler();
-		}
-		UART_SendLine(msg);
+		if(I2C_ReadCurrents(&hi2c1, msg, MAX_SEND_LENGTH) != HAL_OK) Error_Handler();
+		if(UART_SendLine(msg) != HAL_OK) Error_Handler();
 		g_shunt_readFlag = 0;
 	}
 
