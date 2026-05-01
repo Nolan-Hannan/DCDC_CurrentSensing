@@ -1,5 +1,10 @@
 #include "adc.h"
 
+uint16_t adc1_buf_in[ADC_BUF_LEN];
+uint16_t adc2_buf_can[ADC_BUF_LEN];
+volatile uint8_t adc1_ready = 0;
+volatile uint8_t adc2_ready = 0;
+
 extern ADC_HandleTypeDef hadc1;
 extern ADC_HandleTypeDef hadc2;
 
@@ -10,62 +15,36 @@ static float ADC_CountsToVoltage(uint16_t counts)
     return ((float)counts * ADC_VREF) / ADC_MAX_COUNT;
 }
 
-void ADC_App_Init(void)
+HAL_StatusTypeDef ADC_App_Init(void)
 {
     g_adc_readings.in_raw = 0;
     g_adc_readings.can_raw = 0;
     g_adc_readings.in_volt = 0.0f;
     g_adc_readings.can_volt = 0.0f;
+    HAL_StatusTypeDef status = HAL_ADC_Start_DMA(&hadc1, (uint32_t*)adc1_buf_in, ADC_BUF_LEN);
+    if (status != HAL_OK) return status;
+    status = HAL_ADC_Start_DMA(&hadc2, (uint32_t*)adc2_buf_can, ADC_BUF_LEN);
+    return status;
 }
 
 HAL_StatusTypeDef ADC_ReadBoth(uint16_t *adc1_value, uint16_t *adc2_value)
 {
-    HAL_StatusTypeDef status;
-
     if ((adc1_value == NULL) || (adc2_value == NULL))
     {
         return HAL_ERROR;
     }
 
-    /* Start both ADCs first so samples happen close together */
-    status = HAL_ADC_Start(&hadc1);
-    if (status != HAL_OK)
-    {
-        return status;
+    if(adc1_ready == 1 && adc2_ready == 1) {
+    	adc1_ready = 0;
+    	adc2_ready = 0;
+
+    	*adc1_value = adc_get_average(ADC1_IDX);
+    	*adc2_value = adc_get_average(ADC2_IDX);
+
+    	return HAL_OK;
     }
 
-    status = HAL_ADC_Start(&hadc2);
-    if (status != HAL_OK)
-    {
-        HAL_ADC_Stop(&hadc1);
-        return status;
-    }
-
-    /* Wait for ADC1 conversion */
-    status = HAL_ADC_PollForConversion(&hadc1, 50);
-    if (status != HAL_OK)
-    {
-        HAL_ADC_Stop(&hadc1);
-        HAL_ADC_Stop(&hadc2);
-        return status;
-    }
-
-    /* Wait for ADC2 conversion */
-    status = HAL_ADC_PollForConversion(&hadc2, 50);
-    if (status != HAL_OK)
-    {
-        HAL_ADC_Stop(&hadc1);
-        HAL_ADC_Stop(&hadc2);
-        return status;
-    }
-
-    *adc1_value = (uint16_t)HAL_ADC_GetValue(&hadc1);
-    *adc2_value = (uint16_t)HAL_ADC_GetValue(&hadc2);
-
-    HAL_ADC_Stop(&hadc1);
-    HAL_ADC_Stop(&hadc2);
-
-    return HAL_OK;
+    return HAL_BUSY;
 }
 
 HAL_StatusTypeDef ADC_UpdateReadings(void)
@@ -75,17 +54,15 @@ HAL_StatusTypeDef ADC_UpdateReadings(void)
     uint16_t raw2;
 
     status = ADC_ReadBoth(&raw1, &raw2);
-    if (status != HAL_OK)
+    if (status == HAL_OK)
     {
-        return status;
+    	g_adc_readings.in_raw = raw1;
+		g_adc_readings.can_raw = raw2;
+		g_adc_readings.in_volt = ADC_CountsToVoltage(raw1);
+		g_adc_readings.can_volt = ADC_CountsToVoltage(raw2);
     }
 
-    g_adc_readings.in_raw = raw1;
-    g_adc_readings.can_raw = raw2;
-    g_adc_readings.in_volt = ADC_CountsToVoltage(raw1);
-    g_adc_readings.can_volt = ADC_CountsToVoltage(raw2);
-
-    return HAL_OK;
+    return status;
 }
 
 uint16_t ADC_GetRawIn(void)
@@ -111,4 +88,30 @@ float ADC_GetVoltageCan(void)
 ADC_Readings_t ADC_GetReadings(void)
 {
     return g_adc_readings;
+}
+
+uint16_t adc_get_average(uint8_t adc_idx) {
+    uint32_t sum = 0;
+    if(adc_idx == ADC1_IDX) {
+    	for (int i = 0; i < ADC_BUF_LEN; i++) {
+			sum += adc1_buf_in[i];
+	    }
+    	return sum / ADC_BUF_LEN;
+    } else if (adc_idx == ADC2_IDX) {
+    	for (int i = 0; i < ADC_BUF_LEN; i++) {
+			sum += adc2_buf_can[i];
+    	}
+		return sum / ADC_BUF_LEN;
+    }
+
+    return 0xFFFF;
+}
+
+void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc) {
+    if (hadc->Instance == ADC1) {
+        adc1_ready = 1;
+    }
+    if (hadc->Instance == ADC2) {
+        adc2_ready = 1;
+    }
 }

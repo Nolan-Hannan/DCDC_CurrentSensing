@@ -4,6 +4,7 @@
 #include <string.h>
 #include <stdio.h>
 
+
 #define UART1_RX_LINE_SIZE 128
 
 static UART_HandleTypeDef *uart1_handle = NULL;

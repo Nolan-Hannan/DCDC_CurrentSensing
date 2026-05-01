@@ -36,7 +36,7 @@ uint8_t g_shunt_readFlag = 0;
 
 HAL_StatusTypeDef CLI_Init(void)
 {
-    return UART_SendString("> ");
+    return UART_SendString("\r\n> ");
 }
 
 HAL_StatusTypeDef CLI_Process(void) {

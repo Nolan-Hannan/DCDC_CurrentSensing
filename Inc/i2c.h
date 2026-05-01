@@ -28,7 +28,7 @@
 
 typedef struct
 {
-    uint8_t addr;
+    uint16_t addr;
     uint16_t alert_pin;
     volatile uint8_t alert_flag;
 } Sensor_t;

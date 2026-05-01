@@ -45,6 +45,8 @@
 /* Private variables ---------------------------------------------------------*/
 ADC_HandleTypeDef hadc1;
 ADC_HandleTypeDef hadc2;
+DMA_HandleTypeDef hdma_adc1;
+DMA_HandleTypeDef hdma_adc2;
 
 CAN_HandleTypeDef hcan1;
 
@@ -59,6 +61,7 @@ UART_HandleTypeDef huart1;
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
+static void MX_DMA_Init(void);
 static void MX_ADC1_Init(void);
 static void MX_ADC2_Init(void);
 static void MX_CAN1_Init(void);
@@ -103,6 +106,7 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
+  MX_DMA_Init();
   MX_ADC1_Init();
   MX_ADC2_Init();
   MX_CAN1_Init();
@@ -111,8 +115,8 @@ int main(void)
   /* USER CODE BEGIN 2 */
   if(UART_Init(&huart1) != HAL_OK) Error_Handler();
   if(UART_StartReceiveIT() != HAL_OK) Error_Handler();
-  if(I2C_Init(&hi2c1) != HAL_OK) Error_Handler();
-  ADC_App_Init();
+//  if(I2C_Init(&hi2c1) != HAL_OK) Error_Handler();
+  if(ADC_App_Init() != HAL_OK) Error_Handler();
 
   if(CLI_Init() != HAL_OK) Error_Handler();
 
@@ -125,11 +129,6 @@ int main(void)
   {
 	if(CLI_Process() != HAL_OK) Error_Handler();
 
-	// LED Blink
-//	HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_12);
-//	HAL_Delay(500);
-	// END LED Blink
-
 	for (uint8_t i = 0; i < NUM_SENSORS; i++)
 	{
 		if (sensors[i].alert_flag)
@@ -139,18 +138,29 @@ int main(void)
 		}
 	}
 
-	if(g_inPwr_readFlag == 1) {
-		char msg[MAX_SEND_LENGTH];
-		snprintf(msg, sizeof(msg), "inADC: %d inCur: %d mA", ADC_GetRawIn(), (int)(((ADC_GetVoltageIn() - ADC_VQUIESCENT)/ADC_SENS) * 1000));
-		if(UART_SendLine(msg) != HAL_OK) Error_Handler();
-		g_inPwr_readFlag = 0;
-	}
+	if(g_inPwr_readFlag == 1 || g_canPwr_readFlag == 1)
+	{
+	    if(ADC_UpdateReadings() == HAL_OK)  // only print if fresh data was available
+	    {
+	        if(g_inPwr_readFlag == 1) {
+	            char msg[MAX_SEND_LENGTH];
+	            snprintf(msg, sizeof(msg), "inADC: %d inCur: %d mA",
+	                ADC_GetRawIn(),
+	                (int)(((ADC_GetVoltageIn() - ADC_VQUIESCENT) / ADC_SENS) * 1000));
+	            if(UART_SendLine(msg) != HAL_OK) Error_Handler();
+	            g_inPwr_readFlag = 0;
+	        }
 
-	if(g_canPwr_readFlag == 1) {
-		char msg[MAX_SEND_LENGTH];
-		snprintf(msg, sizeof(msg), "canADC: %d canCur: %d mA", ADC_GetRawCan(), (int)(((ADC_GetVoltageCan() - ADC_VQUIESCENT)/ADC_SENS) * 1000));
-		if(UART_SendLine(msg) != HAL_OK) Error_Handler();
-		g_canPwr_readFlag = 0;
+	        if(g_canPwr_readFlag == 1) {
+	            char msg[MAX_SEND_LENGTH];
+	            snprintf(msg, sizeof(msg), "canADC: %d canCur: %d mA",
+	                ADC_GetRawCan(),
+	                (int)(((ADC_GetVoltageCan() - ADC_VQUIESCENT) / ADC_SENS) * 1000));
+	            if(UART_SendLine(msg) != HAL_OK) Error_Handler();
+	            g_canPwr_readFlag = 0;
+	        }
+	    }
+	    // if HAL_BUSY, loop comes back around and tries again next iteration
 	}
 
 	if(g_shunt_readFlag == 1) {
@@ -232,13 +242,13 @@ static void MX_ADC1_Init(void)
   hadc1.Init.ClockPrescaler = ADC_CLOCK_SYNC_PCLK_DIV2;
   hadc1.Init.Resolution = ADC_RESOLUTION_12B;
   hadc1.Init.ScanConvMode = DISABLE;
-  hadc1.Init.ContinuousConvMode = DISABLE;
+  hadc1.Init.ContinuousConvMode = ENABLE;
   hadc1.Init.DiscontinuousConvMode = DISABLE;
   hadc1.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_NONE;
   hadc1.Init.ExternalTrigConv = ADC_SOFTWARE_START;
   hadc1.Init.DataAlign = ADC_DATAALIGN_RIGHT;
   hadc1.Init.NbrOfConversion = 1;
-  hadc1.Init.DMAContinuousRequests = DISABLE;
+  hadc1.Init.DMAContinuousRequests = ENABLE;
   hadc1.Init.EOCSelection = ADC_EOC_SINGLE_CONV;
   if (HAL_ADC_Init(&hadc1) != HAL_OK)
   {
@@ -284,13 +294,13 @@ static void MX_ADC2_Init(void)
   hadc2.Init.ClockPrescaler = ADC_CLOCK_SYNC_PCLK_DIV2;
   hadc2.Init.Resolution = ADC_RESOLUTION_12B;
   hadc2.Init.ScanConvMode = DISABLE;
-  hadc2.Init.ContinuousConvMode = DISABLE;
+  hadc2.Init.ContinuousConvMode = ENABLE;
   hadc2.Init.DiscontinuousConvMode = DISABLE;
   hadc2.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_NONE;
   hadc2.Init.ExternalTrigConv = ADC_SOFTWARE_START;
   hadc2.Init.DataAlign = ADC_DATAALIGN_RIGHT;
   hadc2.Init.NbrOfConversion = 1;
-  hadc2.Init.DMAContinuousRequests = DISABLE;
+  hadc2.Init.DMAContinuousRequests = ENABLE;
   hadc2.Init.EOCSelection = ADC_EOC_SINGLE_CONV;
   if (HAL_ADC_Init(&hadc2) != HAL_OK)
   {
@@ -365,7 +375,7 @@ static void MX_I2C1_Init(void)
 
   /* USER CODE END I2C1_Init 1 */
   hi2c1.Instance = I2C1;
-  hi2c1.Init.ClockSpeed = 100000;
+  hi2c1.Init.ClockSpeed = 10000;
   hi2c1.Init.DutyCycle = I2C_DUTYCYCLE_2;
   hi2c1.Init.OwnAddress1 = 0;
   hi2c1.Init.AddressingMode = I2C_ADDRESSINGMODE_7BIT;
@@ -417,6 +427,25 @@ static void MX_USART1_UART_Init(void)
 }
 
 /**
+  * Enable DMA controller clock
+  */
+static void MX_DMA_Init(void)
+{
+
+  /* DMA controller clock enable */
+  __HAL_RCC_DMA2_CLK_ENABLE();
+
+  /* DMA interrupt init */
+  /* DMA2_Stream0_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(DMA2_Stream0_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(DMA2_Stream0_IRQn);
+  /* DMA2_Stream2_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(DMA2_Stream2_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(DMA2_Stream2_IRQn);
+
+}
+
+/**
   * @brief GPIO Initialization Function
   * @param None
   * @retval None
@@ -449,10 +478,10 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
   /* EXTI interrupt init*/
-  HAL_NVIC_SetPriority(EXTI4_IRQn, 0, 0);
+  HAL_NVIC_SetPriority(EXTI4_IRQn, 1, 0);
   HAL_NVIC_EnableIRQ(EXTI4_IRQn);
 
-  HAL_NVIC_SetPriority(EXTI9_5_IRQn, 0, 0);
+  HAL_NVIC_SetPriority(EXTI9_5_IRQn, 1, 0);
   HAL_NVIC_EnableIRQ(EXTI9_5_IRQn);
 
   /* USER CODE BEGIN MX_GPIO_Init_2 */
