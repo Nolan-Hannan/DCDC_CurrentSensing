@@ -6,13 +6,13 @@
 
 #define ADC_MAX_COUNT   4095.0f
 #define ADC_VREF        3.3f
-#define ADC_VQUIESCENT 1.65f
-#define ADC_SENS 0.044f
+#define ADC_VQUIESCENT 0.33f // Ideally 0.33, may need calibration
+#define ADC_SENS 0.264f
 
-#define ADC1_IDX 0
-#define ADC2_IDX 1
+#define ADC1_IDX 0 // High Voltage
+#define ADC2_IDX 1 // CAN Bus
 
-#define ADC_BUF_LEN 32
+#define ADC_BUF_LEN 64
 
 // For this naming convention, PA0 must attach to the IN_PWR voltage, PA2 must attach to the CAN voltage
 typedef struct

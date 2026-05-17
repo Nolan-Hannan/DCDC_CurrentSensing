@@ -2,10 +2,10 @@
 
 Sensor_t sensors[4] =
 {
-    { .addr = SHUNT1_ADDR, .alert_pin = ALERT1_Pin, .alert_flag = 0 },
-    { .addr = SHUNT2_ADDR, .alert_pin = ALERT2_Pin, .alert_flag = 0 },
-    { .addr = SHUNT3_ADDR, .alert_pin = ALERT3_Pin, .alert_flag = 0 },
-    { .addr = SHUNT4_ADDR, .alert_pin = ALERT4_Pin, .alert_flag = 0 }
+    { .addr = SHUNT1_ADDR, .alert_pin = ALERT1_Pin, .alert_flag = 0 , .FIVE_mOHM = 0},
+    { .addr = SHUNT2_ADDR, .alert_pin = ALERT2_Pin, .alert_flag = 0 , .FIVE_mOHM = 0},
+    { .addr = SHUNT3_ADDR, .alert_pin = ALERT3_Pin, .alert_flag = 0 , .FIVE_mOHM = 1},
+    { .addr = SHUNT4_ADDR, .alert_pin = ALERT4_Pin, .alert_flag = 0 , .FIVE_mOHM = 1}
 };
 
 HAL_StatusTypeDef I2C_Init(I2C_HandleTypeDef *hi2c)
@@ -24,7 +24,6 @@ HAL_StatusTypeDef I2C_Init(I2C_HandleTypeDef *hi2c)
 
         sensors[i].alert_flag = 0;
 
-//        if(i == 0) continue;
 
         status = I2C_CheckReady(hi2c, i);
         if (status != HAL_OK)
@@ -34,25 +33,22 @@ HAL_StatusTypeDef I2C_Init(I2C_HandleTypeDef *hi2c)
         if (status != HAL_OK)
             return status;
 
-        if(i >= 2){
-        	status = I2C_WriteReg(hi2c, i, SHUNT_CAL_ADDR, cal_data_10mO, 2);
-        } else {
+        if(sensors[i].FIVE_mOHM){
         	status = I2C_WriteReg(hi2c, i, SHUNT_CAL_ADDR, cal_data_5mO, 2);
+        } else {
+        	status = I2C_WriteReg(hi2c, i, SHUNT_CAL_ADDR, cal_data_10mO, 2);
         } if (status != HAL_OK) return status;
 
-	    if(i >= 2){
-			status = I2C_WriteReg(hi2c, i, SHUNT_AUL_ADDR, aul_data_10mO, 2);
-	    } else {
+	    if(sensors[i].FIVE_mOHM){
 			status = I2C_WriteReg(hi2c, i, SHUNT_AUL_ADDR, aul_data_5mO, 2);
+	    } else {
+			status = I2C_WriteReg(hi2c, i, SHUNT_AUL_ADDR, aul_data_10mO, 2);
 	    } if (status != HAL_OK) return status;
 
 
         status = I2C_WriteReg(hi2c, i, SHUNT_MASK_ADDR, alert_setting, 2);
         if (status != HAL_OK)
         	return status;
-
-
-
 
     }
 
@@ -108,15 +104,14 @@ HAL_StatusTypeDef I2C_ReadCurrents(I2C_HandleTypeDef *hi2c, char *retmsg, uint16
 	int16_t cur = 0;
 	HAL_StatusTypeDef status;
 	for(uint8_t i = 0; i < NUM_SENSORS; ++i){
-//		if(i == 0) continue;
 		status = I2C_ReadReg(hi2c, i, SHUNT_CUR_ADDR, &cur);
 		if(status != HAL_OK) {
 			return status;
 		}
-		if(i >= 2) {
-			shuntCurVals[i] = (int32_t)(cur * SHUNT_SENS_10MO * 1000);
-		} else {
+		if(sensors[i].FIVE_mOHM) {
 			shuntCurVals[i] = (int32_t)(cur * SHUNT_SENS_5MO * 1000);
+		} else {
+			shuntCurVals[i] = (int32_t)(cur * SHUNT_SENS_10MO * 1000);
 		}
 	}
 	snprintf(retmsg, len, "load1Cur: %d mA\r\nload2Cur: %d mA\r\nload3Cur: %d mA\r\nload4Cur: %d mA\r\n",
@@ -136,10 +131,10 @@ HAL_StatusTypeDef I2C_HandleAlert(I2C_HandleTypeDef *hi2c, uint8_t sensor_idx) {
 
 	int32_t current_mA;
 
-	if (sensor_idx >= 2)
-		current_mA = (int32_t)(cur_raw * SHUNT_SENS_10MO * 1000.0f);
-	else
+	if (sensors[sensor_idx].FIVE_mOHM)
 		current_mA = (int32_t)(cur_raw * SHUNT_SENS_5MO * 1000.0f);
+	else
+		current_mA = (int32_t)(cur_raw * SHUNT_SENS_10MO * 1000.0f);
 
 	int16_t mask_raw;
 	status = I2C_ReadReg(hi2c, sensor_idx, SHUNT_MASK_ADDR, &mask_raw);

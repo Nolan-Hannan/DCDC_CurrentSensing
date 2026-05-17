@@ -31,6 +31,7 @@ typedef struct
     uint16_t addr;
     uint16_t alert_pin;
     volatile uint8_t alert_flag;
+    const uint8_t FIVE_mOHM; // Flag use 1 for a 5mOhm shunt, use 0 for a 10 mOhm shunt.
 } Sensor_t;
 
 extern Sensor_t sensors[NUM_SENSORS];
