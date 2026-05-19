@@ -25,6 +25,7 @@
 #include "cli.h"
 #include "i2c.h"
 #include "adc.h"
+#include "can.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -73,8 +74,7 @@ static void MX_USART1_UART_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-
-
+static void Respond_UART();
 /* USER CODE END 0 */
 
 /**
@@ -117,6 +117,7 @@ int main(void)
   if(UART_StartReceiveIT() != HAL_OK) Error_Handler();
 //  if(I2C_Init(&hi2c1) != HAL_OK) Error_Handler();
   if(ADC_App_Init() != HAL_OK) Error_Handler();
+  if(CAN_Init(&hcan1) != HAL_OK) Error_Handler();
 
   if(CLI_Init() != HAL_OK) Error_Handler();
 
@@ -127,8 +128,12 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
+	// Read UART
 	if(CLI_Process() != HAL_OK) Error_Handler();
 
+
+
+	// Check high SHUNT ALERTs
 	for (uint8_t i = 0; i < NUM_SENSORS; i++)
 	{
 		if (sensors[i].alert_flag)
@@ -138,37 +143,19 @@ int main(void)
 		}
 	}
 
-	if(g_inPwr_readFlag == 1 || g_canPwr_readFlag == 1)
+	// Read CAN. Maybe add ALERT checking into I2C_HandleAlert
+	CAN_Message_t msg;
+	while (CAN_Available())
 	{
-	    if(ADC_UpdateReadings() == HAL_OK)  // only print if fresh data was available
-	    {
-	        if(g_inPwr_readFlag == 1) {
-	            char msg[MAX_SEND_LENGTH];
-	            snprintf(msg, sizeof(msg), "inADC: %d inCur: %d mA",
-	                ADC_GetRawIn(),
-	                (int)(((ADC_GetVoltageIn() - ADC_VQUIESCENT) / ADC_SENS) * 1000));
-	            if(UART_SendLine(msg) != HAL_OK) Error_Handler();
-	            g_inPwr_readFlag = 0;
-	        }
-
-	        if(g_canPwr_readFlag == 1) {
-	            char msg[MAX_SEND_LENGTH];
-	            snprintf(msg, sizeof(msg), "canADC: %d canCur: %d mA",
-	                ADC_GetRawCan(),
-	                (int)(((ADC_GetVoltageCan() - ADC_VQUIESCENT) / ADC_SENS) * 1000));
-	            if(UART_SendLine(msg) != HAL_OK) Error_Handler();
-	            g_canPwr_readFlag = 0;
-	        }
-	    }
-	    // if HAL_BUSY, loop comes back around and tries again next iteration
+		if (CAN_Read(&msg) == HAL_OK)
+		{
+			if(CAN_Process(&msg) != HAL_OK) Error_Handler();
+		}
 	}
 
-	if(g_shunt_readFlag == 1) {
-		char msg[MAX_SEND_LENGTH];
-		if(I2C_ReadCurrents(&hi2c1, msg, MAX_SEND_LENGTH) != HAL_OK) Error_Handler();
-		if(UART_SendLine(msg) != HAL_OK) Error_Handler();
-		g_shunt_readFlag = 0;
-	}
+	// Respond to UART CLI
+	Respond_UART();
+
 
     /* USER CODE END WHILE */
 
@@ -197,7 +184,13 @@ void SystemClock_Config(void)
   RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSI;
   RCC_OscInitStruct.HSIState = RCC_HSI_ON;
   RCC_OscInitStruct.HSICalibrationValue = RCC_HSICALIBRATION_DEFAULT;
-  RCC_OscInitStruct.PLL.PLLState = RCC_PLL_NONE;
+  RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
+  RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSI;
+  RCC_OscInitStruct.PLL.PLLM = 16;
+  RCC_OscInitStruct.PLL.PLLN = 336;
+  RCC_OscInitStruct.PLL.PLLP = RCC_PLLP_DIV4;
+  RCC_OscInitStruct.PLL.PLLQ = 2;
+  RCC_OscInitStruct.PLL.PLLR = 2;
   if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
   {
     Error_Handler();
@@ -207,12 +200,12 @@ void SystemClock_Config(void)
   */
   RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK|RCC_CLOCKTYPE_SYSCLK
                               |RCC_CLOCKTYPE_PCLK1|RCC_CLOCKTYPE_PCLK2;
-  RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_HSI;
+  RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
   RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
   RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV2;
   RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV1;
 
-  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_0) != HAL_OK)
+  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_2) != HAL_OK)
   {
     Error_Handler();
   }
@@ -239,7 +232,7 @@ static void MX_ADC1_Init(void)
   /** Configure the global features of the ADC (Clock, Resolution, Data Alignment and number of conversion)
   */
   hadc1.Instance = ADC1;
-  hadc1.Init.ClockPrescaler = ADC_CLOCK_SYNC_PCLK_DIV2;
+  hadc1.Init.ClockPrescaler = ADC_CLOCK_SYNC_PCLK_DIV4;
   hadc1.Init.Resolution = ADC_RESOLUTION_12B;
   hadc1.Init.ScanConvMode = DISABLE;
   hadc1.Init.ContinuousConvMode = ENABLE;
@@ -291,7 +284,7 @@ static void MX_ADC2_Init(void)
   /** Configure the global features of the ADC (Clock, Resolution, Data Alignment and number of conversion)
   */
   hadc2.Instance = ADC2;
-  hadc2.Init.ClockPrescaler = ADC_CLOCK_SYNC_PCLK_DIV2;
+  hadc2.Init.ClockPrescaler = ADC_CLOCK_SYNC_PCLK_DIV4;
   hadc2.Init.Resolution = ADC_RESOLUTION_12B;
   hadc2.Init.ScanConvMode = DISABLE;
   hadc2.Init.ContinuousConvMode = ENABLE;
@@ -338,10 +331,10 @@ static void MX_CAN1_Init(void)
 
   /* USER CODE END CAN1_Init 1 */
   hcan1.Instance = CAN1;
-  hcan1.Init.Prescaler = 2;
+  hcan1.Init.Prescaler = 6;
   hcan1.Init.Mode = CAN_MODE_NORMAL;
   hcan1.Init.SyncJumpWidth = CAN_SJW_1TQ;
-  hcan1.Init.TimeSeg1 = CAN_BS1_13TQ;
+  hcan1.Init.TimeSeg1 = CAN_BS1_11TQ;
   hcan1.Init.TimeSeg2 = CAN_BS2_2TQ;
   hcan1.Init.TimeTriggeredMode = DISABLE;
   hcan1.Init.AutoBusOff = DISABLE;
@@ -375,7 +368,7 @@ static void MX_I2C1_Init(void)
 
   /* USER CODE END I2C1_Init 1 */
   hi2c1.Instance = I2C1;
-  hi2c1.Init.ClockSpeed = 10000;
+  hi2c1.Init.ClockSpeed = 100000;
   hi2c1.Init.DutyCycle = I2C_DUTYCYCLE_2;
   hi2c1.Init.OwnAddress1 = 0;
   hi2c1.Init.AddressingMode = I2C_ADDRESSINGMODE_7BIT;
@@ -490,6 +483,41 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
+static void Respond_UART()
+{
+	if(g_inPwr_readFlag == 1 || g_canPwr_readFlag == 1)
+		{
+		    if(ADC_UpdateReadings() == HAL_OK)  // only print if fresh data was available
+		    {
+		        if(g_inPwr_readFlag == 1) {
+		            char msg[MAX_SEND_LENGTH];
+		            snprintf(msg, sizeof(msg), "inADC: %d inCur: %d mA",
+		                ADC_GetRawIn(),
+		                (int)(((ADC_GetVoltageIn() - ADC_VQUIESCENT) / ADC_SENS) * 1000));
+		            if(UART_SendLine(msg) != HAL_OK) Error_Handler();
+		            g_inPwr_readFlag = 0;
+		        }
+
+		        if(g_canPwr_readFlag == 1) {
+		            char msg[MAX_SEND_LENGTH];
+		            snprintf(msg, sizeof(msg), "canADC: %d canCur: %d mA",
+		                ADC_GetRawCan(),
+		                (int)(((ADC_GetVoltageCan() - ADC_VQUIESCENT) / ADC_SENS) * 1000));
+		            if(UART_SendLine(msg) != HAL_OK) Error_Handler();
+		            g_canPwr_readFlag = 0;
+		        }
+		    }
+		    // if HAL_BUSY, loop comes back around and tries again next iteration
+		}
+
+		if(g_shunt_readFlag == 1) {
+			char msg[MAX_SEND_LENGTH];
+			if(I2C_ReadCurrents(&hi2c1, msg, MAX_SEND_LENGTH) != HAL_OK) Error_Handler();
+			if(UART_SendLine(msg) != HAL_OK) Error_Handler();
+			g_shunt_readFlag = 0;
+		}
+}
+
 
 /* USER CODE END 4 */
 
