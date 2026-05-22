@@ -58,6 +58,7 @@ UART_HandleTypeDef huart1;
 
 /* USER CODE BEGIN PV */
 Alarm_st alarms = {0, 0, 0, 0, 0, 0};
+uint8_t SysLog = FALSE;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -130,6 +131,7 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
+	uint32_t loop_start = HAL_GetTick();
 	// Read UART
 	if(CLI_Process() != HAL_OK) Error_Handler();
 
@@ -149,10 +151,10 @@ int main(void)
 		int16_t inCur = (int)(((ADC_GetVoltageIn() - ADC_VQUIESCENT) / ADC_SENS) * 1000);
 		int16_t canCur = (int)(((ADC_GetVoltageCan() - ADC_VQUIESCENT) / ADC_SENS) * 1000);
 
-		alarms.in = (inCur > IN_CUR_THR) ? TRUE : FALSE;
-		alarms.can = (canCur > CAN_CUR_THR) ? TRUE : FALSE;
+		alarms.in = (inCur > IN_CUR_THR);
+		alarms.can = (canCur > CAN_CUR_THR);
 
-		if(alarms.in || alarms.can || alarms.load1 || alarms.load2 || alarms.load3 || alarms.load4){
+		if(alarms.in || alarms.can || alarms.load1 || alarms.load2 || alarms.load3 || alarms.load4) {
 			uint8_t data[CAN_ALERT_LENGTH];
 			data[0] = alarms.in;
 			data[1] = alarms.can;
@@ -186,7 +188,13 @@ int main(void)
 
 
     /* USER CODE END WHILE */
+	if(SysLog) {
+		uint32_t loop_time = HAL_GetTick() - loop_start;
 
+		char msg[50];
+		snprintf(msg, sizeof(msg), "Loop: %lu ms", loop_time);
+		UART_SendLine(msg);
+	}
     /* USER CODE BEGIN 3 */
   }
   /* USER CODE END 3 */
@@ -519,7 +527,7 @@ static void Respond_UART()
 		    {
 		        if(g_inPwr_readFlag == 1) {
 		            char msg[MAX_SEND_LENGTH];
-		            snprintf(msg, sizeof(msg), "inADC: %d inCur: %d mA",
+		            snprintf(msg, sizeof(msg), "inADC: %d inCur: %d mA\r\n>",
 		                ADC_GetRawIn(),
 		                (int)(((ADC_GetVoltageIn() - ADC_VQUIESCENT) / ADC_SENS) * 1000));
 		            if(UART_SendLine(msg) != HAL_OK) Error_Handler();
@@ -528,7 +536,7 @@ static void Respond_UART()
 
 		        if(g_canPwr_readFlag == 1) {
 		            char msg[MAX_SEND_LENGTH];
-		            snprintf(msg, sizeof(msg), "canADC: %d canCur: %d mA",
+		            snprintf(msg, sizeof(msg), "canADC: %d canCur: %d mA\r\n>",
 		                ADC_GetRawCan(),
 		                (int)(((ADC_GetVoltageCan() - ADC_VQUIESCENT) / ADC_SENS) * 1000));
 		            if(UART_SendLine(msg) != HAL_OK) Error_Handler();

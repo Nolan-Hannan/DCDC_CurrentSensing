@@ -1,11 +1,13 @@
 #include "cli.h"
 #include "uart.h"
+#include "main.h"
 #include <string.h>
 #include <stdio.h>
 
 #define CLI_BUFFER_SIZE 128
 #define CLI_MAX_ARGS 1
 
+extern uint8_t SysLog;
 
 static char cli_buffer[CLI_BUFFER_SIZE];
 
@@ -16,13 +18,16 @@ static void CMD_Help(int argc, char **argv);
 static void CMD_PwrIn(int argc, char **argv);
 static void CMD_CANPwr(int argc, char **argv);
 static void CMD_PwrOut(int argc, char **argv);
+static void CMD_Syslog(int argc, char **argv);
+
 
 static const cli_cmd_t commands[] = {
 		{"ping", CMD_Ping, "Return pong"},
 		{"help", CMD_Help, "Gives list of all functions"},
 		{"pwrin", CMD_PwrIn, "Returns Current in and Estimated Power for 120V"},
 		{"canpwr", CMD_CANPwr, "Returns Current along CAN line and est power for 12V"},
-		{"pwrout", CMD_PwrOut, "Returns Current and Est. Power for each of 4 12V loads."}
+		{"pwrout", CMD_PwrOut, "Returns Current and Est. Power for each of 4 12V loads."},
+		{"syslog", CMD_Syslog, "Toggles syslog"}
 };
 
 #define NUM_COMMANDS ((sizeof(commands)) / (sizeof(commands[0])))
@@ -52,6 +57,10 @@ HAL_StatusTypeDef CLI_Process(void) {
 
 static void CMD_Ping(int argc, char **argv) {
 	UART_SendLine("Pong");
+}
+
+static void CMD_Syslog(int argc, char **argv) {
+	SysLog = !SysLog;
 }
 
 static void CMD_Help(int argc, char **argv)

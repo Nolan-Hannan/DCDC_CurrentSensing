@@ -118,7 +118,7 @@ HAL_StatusTypeDef I2C_ReadCurrents(I2C_HandleTypeDef *hi2c, char *retmsg, uint16
 			shuntCurVals[i] = (int32_t)(cur * SHUNT_SENS_10MO * 1000);
 		}
 	}
-	snprintf(retmsg, len, "load1Cur: %d mA\r\nload2Cur: %d mA\r\nload3Cur: %d mA\r\nload4Cur: %d mA\r\n",
+	snprintf(retmsg, len, "load1Cur: %d mA\r\nload2Cur: %d mA\r\nload3Cur: %d mA\r\nload4Cur: %d mA\r\n>",
 			(int)shuntCurVals[0],
 			(int)shuntCurVals[1],
 			(int)shuntCurVals[2],
@@ -130,18 +130,19 @@ HAL_StatusTypeDef I2C_ReadCurrents(I2C_HandleTypeDef *hi2c, char *retmsg, uint16
 HAL_StatusTypeDef I2C_ReadCurrents_CAN(I2C_HandleTypeDef *hi2c, uint8_t *retdata) {
 	int16_t cur = 0;
 	HAL_StatusTypeDef status;
+	uint16_t data;
 	for(uint8_t i = 0; i < NUM_SENSORS; ++i){
 		status = I2C_ReadReg(hi2c, i, SHUNT_CUR_ADDR, &cur);
 		if(status != HAL_OK) {
 			return status;
 		}
 		if(sensors[i].FIVE_mOHM) {
-			retdata[2 * i] = ((uint16_t)(cur * SHUNT_SENS_5MO * 1000) & 0xFF00) >> 8;
-			retdata[2 * i + 1] = (uint16_t)(cur * SHUNT_SENS_5MO * 1000) & 0xFF;
+			data = (uint16_t)(cur * SHUNT_SENS_5MO * 1000);
 		} else {
-			retdata[2 * i] = ((uint16_t)(cur * SHUNT_SENS_10MO * 1000) & 0xFF00) >> 8;
-			retdata[2 * i + 1] = (uint16_t)(cur * SHUNT_SENS_10MO * 1000) & 0xFF;
+			data = (uint16_t)(cur * SHUNT_SENS_10MO * 1000);
 		}
+		retdata[2 * i] = (data & 0xFF00) >> 8;
+		retdata[2 * i + 1] = data & 0xFF;
 	}
 
 	return HAL_OK;
@@ -168,10 +169,11 @@ HAL_StatusTypeDef I2C_HandleAlert(I2C_HandleTypeDef *hi2c, uint8_t sensor_idx) {
 
 	if (mask_raw & 0x0010) // AFF bit - Alert Function Flag
 	{
-		alarms.load1 = (sensor_idx == 0) ? TRUE : alarms.load1;
-		alarms.load2 = (sensor_idx == 1) ? TRUE : alarms.load2;
-		alarms.load3 = (sensor_idx == 2) ? TRUE : alarms.load3;
-		alarms.load4 = (sensor_idx == 3) ? TRUE : alarms.load4;
+		if (sensor_idx == 0) alarms.load1 = TRUE;
+		if (sensor_idx == 1) alarms.load2 = TRUE;
+		if (sensor_idx == 2) alarms.load3 = TRUE;
+		if (sensor_idx == 3) alarms.load4 = TRUE;
+
 
 		if(SysTimer_50ms())
 		{
