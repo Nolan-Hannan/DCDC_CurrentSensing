@@ -52,6 +52,8 @@ HAL_StatusTypeDef I2C_WriteReg(I2C_HandleTypeDef *hi2c,
                                   uint16_t len);
 
 HAL_StatusTypeDef I2C_ReadCurrents(I2C_HandleTypeDef *hi2c, char *retmsg, uint16_t len);
+HAL_StatusTypeDef I2C_ReadCurrents_CAN(I2C_HandleTypeDef *hi2c, uint8_t *retdata);
+
 /* Alert handling */
 HAL_StatusTypeDef I2C_HandleAlert(I2C_HandleTypeDef *hi2c, uint8_t sensor_idx);
 

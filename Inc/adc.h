@@ -12,7 +12,10 @@
 #define ADC1_IDX 0 // High Voltage
 #define ADC2_IDX 1 // CAN Bus
 
-#define ADC_BUF_LEN 64
+#define ADC_BUF_LEN 32
+
+#define IN_CUR_THR 2000
+#define CAN_CUR_THR 5000
 
 // For this naming convention, PA0 must attach to the IN_PWR voltage, PA2 must attach to the CAN voltage
 typedef struct

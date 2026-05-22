@@ -1,4 +1,8 @@
 #include "i2c.h"
+#include "main.h"
+#include "timers.h"
+
+extern Alarm_st alarms;
 
 Sensor_t sensors[4] =
 {
@@ -123,6 +127,26 @@ HAL_StatusTypeDef I2C_ReadCurrents(I2C_HandleTypeDef *hi2c, char *retmsg, uint16
 	return HAL_OK;
 }
 
+HAL_StatusTypeDef I2C_ReadCurrents_CAN(I2C_HandleTypeDef *hi2c, uint8_t *retdata) {
+	int16_t cur = 0;
+	HAL_StatusTypeDef status;
+	for(uint8_t i = 0; i < NUM_SENSORS; ++i){
+		status = I2C_ReadReg(hi2c, i, SHUNT_CUR_ADDR, &cur);
+		if(status != HAL_OK) {
+			return status;
+		}
+		if(sensors[i].FIVE_mOHM) {
+			retdata[2 * i] = ((uint16_t)(cur * SHUNT_SENS_5MO * 1000) & 0xFF00) >> 8;
+			retdata[2 * i + 1] = (uint16_t)(cur * SHUNT_SENS_5MO * 1000) & 0xFF;
+		} else {
+			retdata[2 * i] = ((uint16_t)(cur * SHUNT_SENS_10MO * 1000) & 0xFF00) >> 8;
+			retdata[2 * i + 1] = (uint16_t)(cur * SHUNT_SENS_10MO * 1000) & 0xFF;
+		}
+	}
+
+	return HAL_OK;
+}
+
 HAL_StatusTypeDef I2C_HandleAlert(I2C_HandleTypeDef *hi2c, uint8_t sensor_idx) {
 	int16_t cur_raw = 0;
 	HAL_StatusTypeDef status;
@@ -144,17 +168,27 @@ HAL_StatusTypeDef I2C_HandleAlert(I2C_HandleTypeDef *hi2c, uint8_t sensor_idx) {
 
 	if (mask_raw & 0x0010) // AFF bit - Alert Function Flag
 	{
-		snprintf(msg, sizeof(msg),
-				 "HIGH CURRENT: Load[%d] %d mA",
-				 sensor_idx + 1,
-				 (int)current_mA);
+		alarms.load1 = (sensor_idx == 0) ? TRUE : alarms.load1;
+		alarms.load2 = (sensor_idx == 1) ? TRUE : alarms.load2;
+		alarms.load3 = (sensor_idx == 2) ? TRUE : alarms.load3;
+		alarms.load4 = (sensor_idx == 3) ? TRUE : alarms.load4;
 
-		status = UART_SendLine(msg);
+		if(SysTimer_50ms())
+		{
+			snprintf(msg, sizeof(msg),
+							 "HIGH CUR: Load[%d] %d mA",
+							 sensor_idx + 1,
+							 (int)current_mA);
+			status = UART_SendLine(msg);
+		}
 	} else {
+		if(SysTimer_50ms())
+		{
 		snprintf(msg, sizeof(msg),
 						 "MISC Shunt Error: Load[%d]",
 						 sensor_idx + 1);
 		status = UART_SendLine(msg);
+		}
 	}
 
 	return status;

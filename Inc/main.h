@@ -72,6 +72,18 @@ void Error_Handler(void);
 
 /* USER CODE BEGIN Private defines */
 #define MAX_SEND_LENGTH 128
+#define TRUE 1
+#define FALSE 0
+
+typedef struct
+{
+    uint8_t in;
+    uint8_t can;
+    uint8_t load1;
+    uint8_t load2;
+    uint8_t load3;
+    uint8_t load4;
+} Alarm_st;
 /* USER CODE END Private defines */
 
 #ifdef __cplusplus

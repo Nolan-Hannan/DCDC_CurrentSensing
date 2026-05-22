@@ -26,6 +26,7 @@
 #include "i2c.h"
 #include "adc.h"
 #include "can.h"
+#include "timers.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -56,7 +57,7 @@ I2C_HandleTypeDef hi2c1;
 UART_HandleTypeDef huart1;
 
 /* USER CODE BEGIN PV */
-
+Alarm_st alarms = {0, 0, 0, 0, 0, 0};
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -75,6 +76,7 @@ static void MX_USART1_UART_Init(void);
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 static void Respond_UART();
+static HAL_StatusTypeDef Telemetry(uint8_t * data);
 /* USER CODE END 0 */
 
 /**
@@ -131,8 +133,6 @@ int main(void)
 	// Read UART
 	if(CLI_Process() != HAL_OK) Error_Handler();
 
-
-
 	// Check high SHUNT ALERTs
 	for (uint8_t i = 0; i < NUM_SENSORS; i++)
 	{
@@ -143,14 +143,42 @@ int main(void)
 		}
 	}
 
-	// Read CAN. Maybe add ALERT checking into I2C_HandleAlert
-	CAN_Message_t msg;
-	while (CAN_Available())
-	{
-		if (CAN_Read(&msg) == HAL_OK)
-		{
-			if(CAN_Process(&msg) != HAL_OK) Error_Handler();
+	if(SysTimer_10ms()) {
+		ADC_UpdateReadings();
+
+		int16_t inCur = (int)(((ADC_GetVoltageIn() - ADC_VQUIESCENT) / ADC_SENS) * 1000);
+		int16_t canCur = (int)(((ADC_GetVoltageCan() - ADC_VQUIESCENT) / ADC_SENS) * 1000);
+
+		alarms.in = (inCur > IN_CUR_THR) ? TRUE : FALSE;
+		alarms.can = (canCur > CAN_CUR_THR) ? TRUE : FALSE;
+
+		if(alarms.in || alarms.can || alarms.load1 || alarms.load2 || alarms.load3 || alarms.load4){
+			uint8_t data[CAN_ALERT_LENGTH];
+			data[0] = alarms.in;
+			data[1] = alarms.can;
+			data[2] = alarms.load1;
+			data[3] = alarms.load2;
+			data[4] = alarms.load3;
+			data[5] = alarms.load4;
+
+			if(Telemetry((uint8_t*)(data+6)) != HAL_OK) Error_Handler();
+			if(CAN_Transmit(CAN_ALERT_ID, data, CAN_ALERT_LENGTH) != HAL_OK) Error_Handler();
+
+			alarms.in = 0;
+			alarms.can = 0;
+			alarms.load1 = 0;
+			alarms.load2 = 0;
+			alarms.load3 = 0;
+			alarms.load4 = 0;
 		}
+	}
+
+	if(SysTimer_250ms()) {
+		uint8_t data[CAN_MESSAGE_LENGTH];
+
+		if(Telemetry(data) != HAL_OK) Error_Handler();
+
+		if(CAN_Transmit(CAN_POWER_DATA_ID, data, CAN_MESSAGE_LENGTH) != HAL_OK) Error_Handler();
 	}
 
 	// Respond to UART CLI
@@ -516,6 +544,19 @@ static void Respond_UART()
 			if(UART_SendLine(msg) != HAL_OK) Error_Handler();
 			g_shunt_readFlag = 0;
 		}
+}
+
+static HAL_StatusTypeDef Telemetry(uint8_t * data) {
+	int16_t inCur = (int)(((ADC_GetVoltageIn() - ADC_VQUIESCENT) / ADC_SENS) * 1000);
+	int16_t canCur = (int)(((ADC_GetVoltageCan() - ADC_VQUIESCENT) / ADC_SENS) * 1000);
+
+	data[0] = (inCur & 0xFF00) >> 8;
+	data[1] = inCur & 0xFF;
+
+	data[2] = (canCur & 0xFF00) >> 8;
+	data[3] = canCur & 0xFF;
+
+	return I2C_ReadCurrents_CAN(&hi2c1, (uint8_t*)(data + 4));
 }
 
 

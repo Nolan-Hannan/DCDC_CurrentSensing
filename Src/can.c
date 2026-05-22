@@ -118,9 +118,5 @@ HAL_StatusTypeDef CAN_Read(CAN_Message_t *msg)
     return HAL_OK;
 }
 
-HAL_StatusTypeDef CAN_Process(CAN_Message_t *msg)
-{
-	//Return data based on message
-	return HAL_OK;
-}
+
 
