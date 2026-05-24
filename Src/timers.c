@@ -1,6 +1,19 @@
 #include "main.h"
 #include "timers.h"
 
+extern TIM_HandleTypeDef htim2;
+
+uint32_t microsec(void)
+{
+    return __HAL_TIM_GET_COUNTER(&htim2);
+}
+
+uint32_t millisec(void)
+{
+    return microsec() / 1000;
+}
+
+
 uint8_t SysTimer_250ms(void)
 {
     static uint32_t last = 0;

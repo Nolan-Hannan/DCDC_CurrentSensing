@@ -20,10 +20,10 @@ HAL_StatusTypeDef CAN_Init(CAN_HandleTypeDef *hcan)
     filter.FilterActivation = ENABLE;
     filter.FilterBank = 0;
     filter.FilterFIFOAssignment = CAN_FILTER_FIFO0;
-    filter.FilterIdHigh = 0x0000; //FIXME: Assign tighter ID range. Currently accepts all
-    filter.FilterIdLow = 0x0000; //FIXME: Assign tighter ID range. Currently accepts all
-    filter.FilterMaskIdHigh = 0x0000; //FIXME: Assign tighter ID range. Currently accepts all
-    filter.FilterMaskIdLow = 0x0000; //FIXME: Assign tighter ID range. Currently accepts all
+    filter.FilterIdHigh = (0x7FF << 5); //FIXME: Assign tighter ID range. Currently accepts none
+    filter.FilterIdLow = 0x0000; //FIXME: Assign tighter ID range. Currently accepts none
+    filter.FilterMaskIdHigh = (0x7FF << 5); //FIXME: Assign tighter ID range. Currently accepts none
+    filter.FilterMaskIdLow = 0x0000; //FIXME: Assign tighter ID range. Currently accepts none
     filter.FilterMode = CAN_FILTERMODE_IDMASK;
     filter.FilterScale = CAN_FILTERSCALE_32BIT;
 
