@@ -137,7 +137,6 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-	uint32_t loop_start = millisec();
 	uint32_t loop_start_us = microsec();
 	// Read UART
 	if(CLI_Process() != HAL_OK) Error_Handler();
@@ -188,17 +187,14 @@ int main(void)
 		uint8_t data[CAN_MESSAGE_LENGTH];
 
 		if(Telemetry(data) != HAL_OK) Error_Handler();
-
 		if(CAN_Transmit(CAN_POWER_DATA_ID, data, CAN_MESSAGE_LENGTH) != HAL_OK) Error_Handler();
 	}
 
 	// Respond to UART CLI
 	Respond_UART();
 
-	if(SysLog) {
+	if(SysLog && SysTimer_10ms()) {
 		char msg[16];
-		snprintf(msg, 16,"%lu ms", millisec() - loop_start);
-        if(UART_SendLine(msg) != HAL_OK) Error_Handler();
 		snprintf(msg, 16,"%lu us", microsec() - loop_start_us);
         if(UART_SendLine(msg) != HAL_OK) Error_Handler();
 	}
@@ -371,7 +367,7 @@ static void MX_CAN1_Init(void)
 {
 
   /* USER CODE BEGIN CAN1_Init 0 */
-
+	__HAL_RCC_CAN1_CLK_ENABLE(); // Uncomment if CAN still error init.
   /* USER CODE END CAN1_Init 0 */
 
   /* USER CODE BEGIN CAN1_Init 1 */

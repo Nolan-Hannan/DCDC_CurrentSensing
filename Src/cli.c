@@ -24,9 +24,9 @@ static void CMD_Syslog(int argc, char **argv);
 static const cli_cmd_t commands[] = {
 		{"ping", CMD_Ping, "Return pong"},
 		{"help", CMD_Help, "Gives list of all functions"},
-		{"pwrin", CMD_PwrIn, "Returns Current in and Estimated Power for 120V"},
-		{"canpwr", CMD_CANPwr, "Returns Current along CAN line and est power for 12V"},
-		{"pwrout", CMD_PwrOut, "Returns Current and Est. Power for each of 4 12V loads."},
+		{"pwrin", CMD_PwrIn, "Returns Current at input"},
+		{"canpwr", CMD_CANPwr, "Returns Current on can line"},
+		{"pwrout", CMD_PwrOut, "Returns Current and each of 4 12V loads."},
 		{"syslog", CMD_Syslog, "Toggles syslog"}
 };
 

@@ -17,7 +17,7 @@ uint32_t millisec(void)
 uint8_t SysTimer_250ms(void)
 {
     static uint32_t last = 0;
-    uint32_t now = HAL_GetTick();
+    uint32_t now = millisec();
 
     if ((now - last) >= 250)
     {
@@ -31,7 +31,7 @@ uint8_t SysTimer_250ms(void)
 uint8_t SysTimer_50ms(void)
 {
     static uint32_t last = 0;
-    uint32_t now = HAL_GetTick();
+    uint32_t now = millisec();
 
     if ((now - last) >= 50)
     {
@@ -45,7 +45,7 @@ uint8_t SysTimer_50ms(void)
 uint8_t SysTimer_10ms(void)
 {
     static uint32_t last = 0;
-    uint32_t now = HAL_GetTick();
+    uint32_t now = millisec();
 
     if ((now - last) >= 10)
     {

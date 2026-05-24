@@ -14,7 +14,9 @@ HAL_StatusTypeDef CAN_Init(CAN_HandleTypeDef *hcan)
 {
     g_hcan = hcan;
 
-    // 1. Configure filter (accept ALL messages)
+    CLEAR_BIT(hcan->Instance->MCR, CAN_MCR_SLEEP); // Ensure awake
+
+    // 1. Configure filter (accept NO messages)
     CAN_FilterTypeDef filter = {0};
 
     filter.FilterActivation = ENABLE;
