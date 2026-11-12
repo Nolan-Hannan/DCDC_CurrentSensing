@@ -14,8 +14,8 @@
 
 #define ADC_BUF_LEN 32
 
-#define IN_CUR_THR 2000
-#define CAN_CUR_THR 5000
+#define IN_CUR_THR 1064 // Corresponds to 2 A
+#define CAN_CUR_THR 2047 // Corresponds to 5 A
 
 // For this naming convention, PA0 must attach to the IN_PWR voltage, PA2 must attach to the CAN voltage
 typedef struct

@@ -5,10 +5,17 @@
 
 /* ================== CONFIG ================== */
 #define CAN_RX_QUEUE_SIZE  8
-#define CAN_ALERT_ID 0x400
-#define CAN_POWER_DATA_ID 0x500
-#define CAN_MESSAGE_LENGTH 12
-#define CAN_ALERT_LENGTH 6 + CAN_MESSAGE_LENGTH
+
+/* This board sends everything on one ID. 0x301 and 0x302 are the Pi board's GPS and wind.
+ * Classic CAN carries at most 8 data bytes, so telemetry goes out as two frames and
+ * data[0] is the frame index:
+ *   frame 0: [0, in, CAN, load 1 (2 bytes each), alarm flags]
+ *   frame 1: [1, load 2, load 3, load 4 (2 bytes each), 0]
+ * Currents are signed 16-bit mA, big endian. Alarm flag bits: 0 in, 1 CAN, 2 to 5 load 1 to 4.
+ * The flags are nonzero only in frames sent right after an alarm. */
+#define CAN_DCDC_ID 0x300
+#define CAN_FRAME_LENGTH 8
+#define CAN_TELEMETRY_LENGTH 12
 
 
 /* ================== TYPES ================== */

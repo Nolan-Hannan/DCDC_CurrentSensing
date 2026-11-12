@@ -27,6 +27,7 @@
 #include "adc.h"
 #include "can.h"
 #include "timers.h"
+#include <string.h>
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -81,6 +82,7 @@ static void MX_TIM2_Init(void);
 /* USER CODE BEGIN 0 */
 static void Respond_UART();
 static HAL_StatusTypeDef Telemetry(uint8_t * data);
+static HAL_StatusTypeDef SendTelemetry(uint8_t alarmFlags);
 /* USER CODE END 0 */
 
 /**
@@ -155,23 +157,15 @@ int main(void)
 	if(SysTimer_10ms()) {
 		ADC_UpdateReadings();
 
-		int16_t inCur = (int)(((ADC_GetVoltageIn() - ADC_VQUIESCENT) / ADC_SENS) * 1000);
-		int16_t canCur = (int)(((ADC_GetVoltageCan() - ADC_VQUIESCENT) / ADC_SENS) * 1000);
-
-		alarms.in = (inCur > IN_CUR_THR);
-		alarms.can = (canCur > CAN_CUR_THR);
+		alarms.in = (ADC_GetRawIn() > IN_CUR_THR);
+		alarms.can = (ADC_GetRawCan() > CAN_CUR_THR);
 
 		if(alarms.in || alarms.can || alarms.load1 || alarms.load2 || alarms.load3 || alarms.load4) {
-			uint8_t data[CAN_ALERT_LENGTH];
-			data[0] = alarms.in;
-			data[1] = alarms.can;
-			data[2] = alarms.load1;
-			data[3] = alarms.load2;
-			data[4] = alarms.load3;
-			data[5] = alarms.load4;
+			uint8_t flags = (uint8_t)((alarms.in    ? 0x01 : 0) | (alarms.can   ? 0x02 : 0) |
+			                          (alarms.load1 ? 0x04 : 0) | (alarms.load2 ? 0x08 : 0) |
+			                          (alarms.load3 ? 0x10 : 0) | (alarms.load4 ? 0x20 : 0));
 
-			if(Telemetry((uint8_t*)(data+6)) != HAL_OK) Error_Handler();
-			if(CAN_Transmit(CAN_ALERT_ID, data, CAN_ALERT_LENGTH) != HAL_OK) Error_Handler();
+			if(SendTelemetry(flags) != HAL_OK) Error_Handler();
 
 			alarms.in = 0;
 			alarms.can = 0;
@@ -184,10 +178,7 @@ int main(void)
 
 	// Send normal data every 250 ms
 	if(SysTimer_250ms()) {
-		uint8_t data[CAN_MESSAGE_LENGTH];
-
-		if(Telemetry(data) != HAL_OK) Error_Handler();
-		if(CAN_Transmit(CAN_POWER_DATA_ID, data, CAN_MESSAGE_LENGTH) != HAL_OK) Error_Handler();
+		if(SendTelemetry(0) != HAL_OK) Error_Handler();
 	}
 
 	// Respond to UART CLI
@@ -607,6 +598,7 @@ static void Respond_UART()
 }
 
 static HAL_StatusTypeDef Telemetry(uint8_t * data) {
+	// Data is 16 bit per sensor, sent Big Endian in the following order (INPUT, CAN, LOAD 1 to 4)
 	int16_t inCur = (int)(((ADC_GetVoltageIn() - ADC_VQUIESCENT) / ADC_SENS) * 1000);
 	int16_t canCur = (int)(((ADC_GetVoltageCan() - ADC_VQUIESCENT) / ADC_SENS) * 1000);
 
@@ -617,6 +609,24 @@ static HAL_StatusTypeDef Telemetry(uint8_t * data) {
 	data[3] = canCur & 0xFF;
 
 	return I2C_ReadCurrents_CAN(&hi2c1, (uint8_t*)(data + 4));
+}
+
+// Sends the telemetry as two 8-byte frames on CAN_DCDC_ID; see can.h for the layout.
+static HAL_StatusTypeDef SendTelemetry(uint8_t alarmFlags) {
+	uint8_t telemetry[CAN_TELEMETRY_LENGTH];
+	uint8_t frame[CAN_FRAME_LENGTH] = {0};
+
+	if(Telemetry(telemetry) != HAL_OK) return HAL_ERROR;
+
+	frame[0] = 0;
+	memcpy(&frame[1], &telemetry[0], 6);	// in, CAN, load 1
+	frame[7] = alarmFlags;
+	if(CAN_Transmit(CAN_DCDC_ID, frame, CAN_FRAME_LENGTH) != HAL_OK) return HAL_ERROR;
+
+	frame[0] = 1;
+	memcpy(&frame[1], &telemetry[6], 6);	// load 2 to 4
+	frame[7] = 0;
+	return CAN_Transmit(CAN_DCDC_ID, frame, CAN_FRAME_LENGTH);
 }
 
 

@@ -51,6 +51,11 @@ HAL_StatusTypeDef CAN_Transmit(uint32_t id, uint8_t *data, uint8_t len)
     CAN_TxHeaderTypeDef header;
     uint32_t mailbox;
 
+    /* Classic CAN carries at most 8 data bytes; a longer length would silently drop data. */
+    if (len > 8U) {
+        return HAL_ERROR;
+    }
+
     header.StdId = id & 0x7FF;
     header.ExtId = 0;
     header.IDE   = CAN_ID_STD;
